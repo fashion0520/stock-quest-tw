@@ -1,11 +1,12 @@
 import { QUOTES } from './market-data.js';
-import { calculateTradeCosts, executeTrade, getPortfolioSummary } from './trading-engine.js';
+import { calculateTradeCosts, executeTrade, getPortfolioSummary, setWatchlisted } from './trading-engine.js';
 import { loadPortfolio, resetPortfolio, savePortfolio } from './storage.js';
 
 const quoteMap = new Map(QUOTES.map((quote) => [quote.symbol, quote]));
 const loaded = loadPortfolio();
 let portfolio = loaded.portfolio;
 let toastTimer;
+let quoteScope = 'watchlist';
 
 const elements = {
   dialog: document.querySelector('#trade-dialog'),
@@ -62,12 +63,22 @@ function renderSummary() {
 function renderQuotes() {
   const list = document.querySelector('#quote-list');
   const query = document.querySelector('#quote-search').value.trim().toLowerCase();
-  const filtered = QUOTES.filter((quote) => `${quote.symbol} ${quote.name} ${quote.sector}`.toLowerCase().includes(query));
+  const filtered = QUOTES.filter((quote) => (quoteScope === 'all' || portfolio.watchlist.includes(quote.symbol))
+    && `${quote.symbol} ${quote.name} ${quote.sector}`.toLowerCase().includes(query));
+  document.querySelector('#watchlist-count').textContent = quoteScope === 'watchlist' ? `${portfolio.watchlist.length} 檔自選` : `共 ${QUOTES.length} 檔`;
   list.replaceChildren();
   if (filtered.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.textContent = '找不到符合的股票，試試代號或名稱。';
+    empty.textContent = quoteScope === 'watchlist' && !query ? '自選清單還沒有股票，前往「全部股票」加入第一檔。' : '找不到符合的股票，試試代號或名稱。';
+    if (quoteScope === 'watchlist' && !query) {
+      const showAll = document.createElement('button');
+      showAll.type = 'button';
+      showAll.className = 'quiet-button';
+      showAll.dataset.quoteScope = 'all';
+      showAll.textContent = '瀏覽全部股票';
+      empty.append(document.createElement('br'), showAll);
+    }
     list.append(empty);
     return;
   }
@@ -96,12 +107,24 @@ function renderQuotes() {
     const changePercent = (changeCents / quote.previousCloseCents) * 100;
     change.className = `stock-change ${changeCents >= 0 ? 'up' : 'down'}`;
     change.textContent = `${changeCents >= 0 ? '+' : '−'}${Math.abs(changePercent).toFixed(2)}%`;
+    const actions = document.createElement('div');
+    actions.className = 'quote-actions';
+    const watch = document.createElement('button');
+    watch.className = 'watch-toggle';
+    watch.type = 'button';
+    watch.dataset.watchSymbol = quote.symbol;
+    const isWatched = portfolio.watchlist.includes(quote.symbol);
+    watch.setAttribute('aria-pressed', String(isWatched));
+    watch.setAttribute('aria-label', `${isWatched ? '移出' : '加入'}自選 ${quote.name}`);
+    watch.title = `${isWatched ? '移出' : '加入'}自選`;
+    watch.textContent = isWatched ? '★' : '☆';
     const action = document.createElement('button');
     action.className = 'quote-action';
     action.type = 'button';
     action.dataset.buySymbol = quote.symbol;
     action.textContent = '模擬買進';
-    row.append(identity, price, change, action);
+    actions.append(watch, action);
+    row.append(identity, price, change, actions);
     list.append(row);
   }
 }
@@ -259,8 +282,25 @@ elements.symbol.addEventListener('change', updatePreview);
 elements.quantity.addEventListener('input', updatePreview);
 
 document.querySelector('#quote-list').addEventListener('click', (event) => {
+  const watchButton = event.target.closest('[data-watch-symbol]');
+  if (watchButton) {
+    const symbol = watchButton.dataset.watchSymbol;
+    const next = setWatchlisted(portfolio, symbol, !portfolio.watchlist.includes(symbol));
+    const saved = saveAndRender(next);
+    toast(saved ? `${getName(symbol)}${next.watchlist.includes(symbol) ? '已加入' : '已移出'}自選清單。` : '清單已更新，但瀏覽器未能保存。');
+    return;
+  }
   const button = event.target.closest('[data-buy-symbol]');
   if (button) openTradeDialog({ symbol: button.dataset.buySymbol, side: 'buy' });
+});
+document.querySelector('#stocks-panel').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-quote-scope]');
+  if (!button) return;
+  quoteScope = button.dataset.quoteScope;
+  document.querySelectorAll('[data-quote-scope="all"], [data-quote-scope="watchlist"]').forEach((item) => {
+    if (item.classList.contains('scope-button')) item.classList.toggle('active', item.dataset.quoteScope === quoteScope);
+  });
+  renderQuotes();
 });
 document.querySelector('#positions-body').addEventListener('click', (event) => {
   const button = event.target.closest('[data-sell-symbol]');
@@ -326,6 +366,7 @@ document.querySelectorAll('.range button').forEach((button) => button.addEventLi
 
 if (loaded.status === 'recovered') toast('保存資料格式有誤，已暫以新帳戶開始；確認後的交易會覆寫舊資料。');
 else if (loaded.status === 'unavailable') toast('瀏覽器儲存不可用；本次練習不會在重新載入後保留。');
+else if (loaded.status === 'migrated-unsaved') toast('舊版帳戶已載入，但瀏覽器未能更新資料版本；下一筆操作後會再次保存。');
 
 populateSymbolOptions();
 render();
@@ -333,6 +374,7 @@ render();
 
 
 document.querySelector('#app-status').textContent = '模擬交易功能已就緒';
+
 
 
 

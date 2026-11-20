@@ -1,4 +1,4 @@
-import { createInitialPortfolio, validatePortfolioState } from './trading-engine.js';
+import { createInitialPortfolio, PORTFOLIO_SCHEMA_VERSION, validatePortfolioState } from './trading-engine.js';
 
 export const PORTFOLIO_STORAGE_KEY = 'stock-quest.portfolio.v1';
 
@@ -20,7 +20,17 @@ export function loadPortfolio(storage = getBrowserStorage()) {
   }
   if (raw === null) return { portfolio: createInitialPortfolio(), status: 'fresh' };
   try {
-    const portfolio = JSON.parse(raw);
+    let portfolio = JSON.parse(raw);
+    if (portfolio?.schemaVersion === 1 && Array.isArray(portfolio.holdings) && Array.isArray(portfolio.trades)) {
+      portfolio = { ...portfolio, schemaVersion: PORTFOLIO_SCHEMA_VERSION, watchlist: ['2330', '2317', '2603'] };
+      validatePortfolioState(portfolio);
+      try {
+        storage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(portfolio));
+        return { portfolio, status: 'migrated' };
+      } catch {
+        return { portfolio, status: 'migrated-unsaved' };
+      }
+    }
     validatePortfolioState(portfolio);
     return { portfolio, status: 'loaded' };
   } catch {
@@ -43,4 +53,5 @@ export function resetPortfolio(storage = getBrowserStorage()) {
   const portfolio = createInitialPortfolio();
   return { portfolio, saved: savePortfolio(portfolio, storage) };
 }
+
 

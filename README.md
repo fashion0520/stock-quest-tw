@@ -20,7 +20,7 @@ npm test
 
 ## 功能
 
-- 搜尋六檔台股示意資料，依名稱、代號或產業篩選。
+- 搜尋六檔台股示意資料，依名稱、代號或產業篩選；管理本機自選股清單。
 - 以 NT$1,000,000 虛擬資金模擬買進、賣出與整數股數交易。
 - 試算手續費和賣出證交稅；買賣使用明確的示意參考價。
 - 查看現金、持倉成本、市值、已實現／未實現損益與最近交易。
@@ -31,4 +31,5 @@ npm test
 ## 發布
 
 推送至 `main` 後，`.github/workflows/deploy.yml` 會透過 GitHub Actions 自動發布至 Pages。repository Pages source 已設為 GitHub Actions。
+
 

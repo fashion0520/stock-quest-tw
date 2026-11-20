@@ -6,6 +6,7 @@ import {
   createInitialPortfolio,
   executeTrade,
   getPortfolioSummary,
+  setWatchlisted,
   validatePortfolioState,
 } from '../src/trading-engine.js';
 import { loadPortfolio, PORTFOLIO_STORAGE_KEY, resetPortfolio, savePortfolio } from '../src/storage.js';
@@ -25,7 +26,17 @@ test('new account starts with one million TWD and no positions', () => {
   assert.equal(state.cashCents, INITIAL_CASH_CENTS);
   assert.deepEqual(state.holdings, []);
   assert.deepEqual(state.trades, []);
+  assert.deepEqual(state.watchlist, ['2330', '2317', '2603']);
   assert.equal(validatePortfolioState(state), state);
+});
+
+test('watchlist changes immutably, avoids duplicates, and can remove a symbol', () => {
+  const start = createInitialPortfolio();
+  const added = setWatchlisted(start, '2454', true);
+  assert.deepEqual(added.watchlist, ['2330', '2317', '2603', '2454']);
+  assert.deepEqual(start.watchlist, ['2330', '2317', '2603']);
+  assert.equal(setWatchlisted(added, '2454', true), added);
+  assert.deepEqual(setWatchlisted(added, '2317', false).watchlist, ['2330', '2603', '2454']);
 });
 
 test('trade cost estimate applies commission to both sides and stock tax only on sale', () => {
@@ -96,6 +107,27 @@ test('storage saves and reloads a validated account', () => {
   assert.deepEqual(loadPortfolio(storage), { portfolio: state, status: 'loaded' });
 });
 
+test('storage migrates version one accounts and preserves them when migration cannot be saved', () => {
+  const previous = createInitialPortfolio();
+  delete previous.watchlist;
+  previous.schemaVersion = 1;
+  const storage = new MemoryStorage();
+  storage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(previous));
+  const migrated = loadPortfolio(storage);
+  assert.equal(migrated.status, 'migrated');
+  assert.equal(migrated.portfolio.schemaVersion, 2);
+  assert.deepEqual(migrated.portfolio.watchlist, ['2330', '2317', '2603']);
+  assert.equal(loadPortfolio(storage).status, 'loaded');
+
+  const readOnlyStorage = {
+    getItem: () => JSON.stringify(previous),
+    setItem: () => { throw new Error('read only'); },
+  };
+  const unsaved = loadPortfolio(readOnlyStorage);
+  assert.equal(unsaved.status, 'migrated-unsaved');
+  assert.equal(unsaved.portfolio.cashCents, INITIAL_CASH_CENTS);
+});
+
 test('corrupt stored data starts a fresh account and reset overwrites the saved state', () => {
   const storage = new MemoryStorage();
   storage.setItem(PORTFOLIO_STORAGE_KEY, '{broken');
@@ -112,4 +144,5 @@ test('unavailable storage does not prevent using the in-memory account', () => {
   assert.equal(loaded.status, 'unavailable');
   assert.equal(savePortfolio(loaded.portfolio, null), false);
 });
+
 

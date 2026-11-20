@@ -1,5 +1,6 @@
 export const INITIAL_CASH_CENTS = 100_000_000;
-export const PORTFOLIO_SCHEMA_VERSION = 1;
+export const PORTFOLIO_SCHEMA_VERSION = 2;
+export const DEFAULT_WATCHLIST = Object.freeze(['2330', '2317', '2603']);
 export const FEE_RATE_DENOMINATOR = 1_000_000;
 export const DEFAULT_FEE_RATES = Object.freeze({
   commissionPpm: 1_425,
@@ -42,6 +43,7 @@ export function createInitialPortfolio({ now = new Date().toISOString(), initial
     createdAt: now,
     holdings: [],
     trades: [],
+    watchlist: [...DEFAULT_WATCHLIST],
   };
 }
 
@@ -54,8 +56,13 @@ export function validatePortfolioState(state) {
   }
   assertCents(state.initialCashCents, '初始資金');
   assertCents(state.cashCents, '現金餘額');
-  if (typeof state.createdAt !== 'string' || !Array.isArray(state.holdings) || !Array.isArray(state.trades)) {
+  if (typeof state.createdAt !== 'string' || !Array.isArray(state.holdings) || !Array.isArray(state.trades) || !Array.isArray(state.watchlist)) {
     throw new TypeError('帳戶資料缺少必要欄位。');
+  }
+
+  if (state.watchlist.some((symbol) => typeof symbol !== 'string' || !symbol.trim())
+    || new Set(state.watchlist).size !== state.watchlist.length) {
+    throw new TypeError('觀察清單格式錯誤。');
   }
 
   const seenSymbols = new Set();
@@ -85,6 +92,20 @@ export function validatePortfolioState(state) {
     }
   }
   return state;
+}
+
+export function setWatchlisted(state, symbol, watchlisted) {
+  validatePortfolioState(state);
+  if (typeof symbol !== 'string' || !symbol.trim() || typeof watchlisted !== 'boolean') {
+    throw new TypeError('觀察清單操作格式錯誤。');
+  }
+  const hasSymbol = state.watchlist.includes(symbol);
+  if (hasSymbol === watchlisted) return state;
+  const nextState = {
+    ...state,
+    watchlist: watchlisted ? [...state.watchlist, symbol] : state.watchlist.filter((item) => item !== symbol),
+  };
+  return validatePortfolioState(nextState);
 }
 
 export function calculateTradeCosts({ side, priceCents, quantity }, rates = DEFAULT_FEE_RATES) {
@@ -210,4 +231,5 @@ export function getPortfolioSummary(state, quotes = []) {
     positions,
   };
 }
+
 
