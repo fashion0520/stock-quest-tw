@@ -17,7 +17,7 @@
 
 ### 目前狀態
 
-**首頁原型與 Pages workflow 已完成，並提交在本機 `main` 分支。**尚未建立 GitHub repository 或完成 Pages 發布；行情資料與模擬交易功能也尚未接入。
+**已建立公開 GitHub repository，首頁由 GitHub Actions 成功部署至 Pages。**網站目前展示靜態示意資料；行情資料與模擬交易功能尚未接入。
 
 ### 已完成
 
@@ -59,7 +59,7 @@
 - [ ] 實作模擬買賣、虛擬持倉、現金餘額與損益計算。
 - [x] 建立投資組合摘要與分析儀表板介面原型（目前使用示意資料；互動功能仍待完成）。
 - [x] 建立經驗值、等級、徽章與每日任務的介面原型（持久化遊戲機制仍待完成）。
-- [ ] 登入 GitHub 後建立公開 `fashion0520/stock-quest-tw` repository、推送 `main`，並由 GitHub Actions 部署至 Pages。
+- [x] 建立公開 `fashion0520/stock-quest-tw` repository，設定 GitHub Actions 為 Pages 發布來源並成功部署。
 
 ## 尚待確認的產品決策
 
@@ -69,10 +69,13 @@
 ## 本次交付狀態
 
 - 已完成單頁繁體中文、響應式台股模擬交易首頁原型，包含投資組合摘要、市場觀測、股票清單、任務與成就視覺。
-- 已完成 GitHub Actions Pages 部署 workflow；推送至 main 會執行發布。首次發布需確認 repository Pages source 設為 GitHub Actions。
+- 已完成 GitHub Actions Pages 部署 workflow；推送至 main 會執行發布。首次部署已成功，後續推送至 `main` 會自動發布。
 - 目前行情、資產、績效與交易數字皆為示意資料；模擬買賣、真實資料供應、登入與持久化尚未實作。
 
 
-- 發布目前受阻於 GitHub 網頁尚未登入，且本機 Git Credential Manager 沒有可用的 GitHub 認證。使用者登入 GitHub 後即可繼續建立與推送。
+- GitHub repository：[fashion0520/stock-quest-tw](https://github.com/fashion0520/stock-quest-tw)。
+- 公開網站：[股市練功房](https://fashion0520.github.io/stock-quest-tw/)。
+
+
 
 
